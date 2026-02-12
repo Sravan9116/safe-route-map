@@ -15,15 +15,18 @@ app.use(cors());
 app.use(express.json());
 
 /* ===============================
-   SERVE FRONTEND (IMPORTANT)
+   FRONTEND SERVING (ROOT FOLDER)
 ================================= */
 
-// Serve static files from project root
-app.use(express.static(path.join(__dirname, "..")));
+// Absolute path to project root
+const rootPath = path.resolve(__dirname, "..");
+
+// Serve static files (css, js, etc.)
+app.use(express.static(rootPath));
 
 // Root route
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "..", "index.html"));
+  res.sendFile(path.join(rootPath, "index.html"));
 });
 
 /* ===============================
@@ -41,9 +44,9 @@ const vehicleSpeedFactor = {
 
 function getTrafficFactor() {
   const random = Math.random();
-  if (random < 0.2) return 1.6;   // heavy traffic
-  if (random < 0.5) return 1.3;   // medium traffic
-  return 1.0;                     // normal
+  if (random < 0.2) return 1.6;
+  if (random < 0.5) return 1.3;
+  return 1.0;
 }
 
 app.post("/api/navigation/route", async (req, res) => {
@@ -78,17 +81,8 @@ app.post("/api/navigation/route", async (req, res) => {
 });
 
 /* ===============================
-   TWILIO WHATSAPP EMERGENCY ALERT
+   TWILIO WHATSAPP
 ================================= */
-
-if (
-  !process.env.TWILIO_ACCOUNT_SID ||
-  !process.env.TWILIO_AUTH_TOKEN ||
-  !process.env.TWILIO_WHATSAPP_NUMBER ||
-  !process.env.EMERGENCY_CONTACT
-) {
-  console.warn("⚠️ Twilio environment variables missing!");
-}
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -113,8 +107,6 @@ Reason: ${reason || "Emergency detected"}
 
 📍 Live Location:
 https://www.google.com/maps?q=${latitude},${longitude}
-
-Please check immediately.
     `;
 
     const message = await client.messages.create({
@@ -125,8 +117,7 @@ Please check immediately.
 
     res.json({
       success: true,
-      sid: message.sid,
-      status: message.status
+      sid: message.sid
     });
 
   } catch (error) {
@@ -139,7 +130,7 @@ Please check immediately.
 });
 
 /* ===============================
-   SERVER START
+   START SERVER
 ================================= */
 
 const PORT = process.env.PORT || 5000;
