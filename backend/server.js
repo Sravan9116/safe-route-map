@@ -15,7 +15,7 @@ app.use(cors());
 app.use(express.json());
 
 // Serve frontend files (VERY IMPORTANT)
-app.use(express.static(path.join(__dirname, "../")));
+app.use(express.static(path.join(__dirname, "../index.html")));
 
 /* ===============================
    ROOT ROUTE (Prevents Cannot GET /)
