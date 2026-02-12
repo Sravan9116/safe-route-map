@@ -140,7 +140,7 @@ async function buildRoute() {
 
 async function fetchRoute(vehicle) {
 
-  const res = await fetch(" https://64f8-103-182-68-20.ngrok-free.app/api/navigation/route", {
+  const res = await fetch("https://0da8-103-182-68-20.ngrok-free.app/api/navigation/route", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
