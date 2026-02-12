@@ -2,14 +2,31 @@ const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
 const twilio = require("twilio");
+const path = require("path");
 require("dotenv").config();
 
 const app = express();
+
+/* ===============================
+   MIDDLEWARE
+================================= */
+
 app.use(cors());
 app.use(express.json());
 
+// Serve frontend files (VERY IMPORTANT)
+app.use(express.static(path.join(__dirname, "../")));
+
 /* ===============================
-   OSRM ROUTING (UNCHANGED)
+   ROOT ROUTE (Prevents Cannot GET /)
+================================= */
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../index.html"));
+});
+
+/* ===============================
+   OSRM ROUTING
 ================================= */
 
 const OSRM_URL = "http://router.project-osrm.org/route/v1";
@@ -21,17 +38,21 @@ const vehicleSpeedFactor = {
   truck: 0.75
 };
 
-function getTrafficFactor(lat, lng) {
+function getTrafficFactor() {
   const random = Math.random();
-  if (random < 0.2) return 1.6;
-  if (random < 0.5) return 1.3;
-  return 1.0;
+  if (random < 0.2) return 1.6;   // heavy traffic
+  if (random < 0.5) return 1.3;   // medium traffic
+  return 1.0;                     // normal
 }
 
 app.post("/api/navigation/route", async (req, res) => {
-  const { startLat, startLng, endLat, endLng, vehicle } = req.body;
-
   try {
+    const { startLat, startLng, endLat, endLng, vehicle } = req.body;
+
+    if (!startLat || !startLng || !endLat || !endLng) {
+      return res.status(400).json({ error: "Missing coordinates" });
+    }
+
     const profile =
       vehicle === "walk" ? "foot" :
       vehicle === "bike" ? "bike" : "driving";
@@ -41,7 +62,7 @@ app.post("/api/navigation/route", async (req, res) => {
     const response = await axios.get(url);
     const route = response.data.routes[0];
 
-    const trafficFactor = getTrafficFactor(startLat, startLng);
+    const trafficFactor = getTrafficFactor();
     const vehicleFactor = vehicleSpeedFactor[vehicle] || 1.0;
 
     route.adjustedDuration = route.duration * trafficFactor / vehicleFactor;
@@ -65,7 +86,7 @@ if (
   !process.env.TWILIO_WHATSAPP_NUMBER ||
   !process.env.EMERGENCY_CONTACT
 ) {
-  console.error("❌ Missing Twilio environment variables!");
+  console.warn("⚠️ Twilio environment variables missing!");
 }
 
 const client = twilio(
@@ -74,9 +95,7 @@ const client = twilio(
 );
 
 app.post("/api/emergency-whatsapp", async (req, res) => {
-
   try {
-
     const { latitude, longitude, reason } = req.body;
 
     if (!latitude || !longitude) {
@@ -86,11 +105,8 @@ app.post("/api/emergency-whatsapp", async (req, res) => {
       });
     }
 
-    console.log("🚨 Emergency WhatsApp triggered");
-    console.log("Location:", latitude, longitude);
-
     const messageBody = `
-🚨 *EMERGENCY ALERT* 🚨
+🚨 EMERGENCY ALERT 🚨
 
 Reason: ${reason || "Emergency detected"}
 
@@ -101,14 +117,10 @@ Please check immediately.
     `;
 
     const message = await client.messages.create({
-      from: process.env.TWILIO_WHATSAPP_NUMBER,   // whatsapp:+14155238886
-      to: process.env.EMERGENCY_CONTACT,          // whatsapp:+91XXXXXXXXXX
+      from: process.env.TWILIO_WHATSAPP_NUMBER,
+      to: process.env.EMERGENCY_CONTACT,
       body: messageBody
     });
-
-    console.log("✅ WhatsApp Sent");
-    console.log("Message SID:", message.sid);
-    console.log("Status:", message.status);
 
     res.json({
       success: true,
@@ -117,22 +129,20 @@ Please check immediately.
     });
 
   } catch (error) {
-
-    console.error("❌ Twilio WhatsApp Error:");
-    console.error("Code:", error.code);
-    console.error("Message:", error.message);
-
+    console.error("Twilio Error:", error.message);
     res.status(500).json({
       success: false,
-      error: error.message,
-      code: error.code
+      error: error.message
     });
   }
 });
 
-/* =============================== */
+/* ===============================
+   SERVER START
+================================= */
 
-app.listen(5000, "0.0.0.0", () => {
-  console.log("Server running on port 5000");
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
-
