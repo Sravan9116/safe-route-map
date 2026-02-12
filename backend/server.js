@@ -14,15 +14,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve frontend files (VERY IMPORTANT)
-app.use(express.static(path.join(__dirname, "../index.html")));
-
 /* ===============================
-   ROOT ROUTE (Prevents Cannot GET /)
+   SERVE FRONTEND (IMPORTANT)
 ================================= */
 
+// Serve static files from project root
+app.use(express.static(path.join(__dirname, "..")));
+
+// Root route
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../index.html"));
+  res.sendFile(path.join(__dirname, "..", "index.html"));
 });
 
 /* ===============================
